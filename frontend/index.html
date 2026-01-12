@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps Portfolio Project</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚀 DevOps Portfolio Project</h1>
+            <p class="subtitle">Demonstrating AWS CDK, CI/CD, and Serverless Architecture</p>
+        </header>
+
+        <main class="main">
+            <!-- Environment Info -->
+            <section class="card">
+                <h2>Environment Information</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label">Environment:</span>
+                        <span id="environment" class="value">Loading...</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">API URL:</span>
+                        <span id="api-url" class="value">Loading...</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Version:</span>
+                        <span id="version" class="value">Loading...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API Health Check -->
+            <section class="card">
+                <h2>API Health Status</h2>
+                <button id="health-check-btn" class="btn btn-primary">Check API Health</button>
+                <div id="health-status" class="status-display"></div>
+            </section>
+
+            <!-- Items Management -->
+            <section class="card">
+                <h2>Items Management</h2>
+                <div class="items-controls">
+                    <button id="load-items-btn" class="btn btn-secondary">Load Items</button>
+                    <button id="add-item-btn" class="btn btn-primary">Add New Item</button>
+                </div>
+                <div id="items-list" class="items-container"></div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>Built with AWS CDK v2 • Deployed via CI/CD Pipeline • Hosted on CloudFront + S3</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "name": "devops-portfolio-project",
+  "version": "1.0.0",
+  "description": "Resume-ready DevOps project demonstrating AWS CDK CI/CD best practices",
+  "main": "infra/bin/app.js",
+  "scripts": {
+    "build": "tsc && cd lambda && npm run build && cd ..",
+    "watch": "tsc -w",
+    "test": "jest && cd lambda && npm test && cd ..",
+    "test:infra": "jest",
+    "test:lambda": "cd lambda && npm test && cd ..",
+    "cdk": "cdk",
+    "deploy": "npm run build && cdk deploy",
+    "deploy:pipeline": "npm run build && cdk deploy DevOpsPortfolioPipelineStack",
+    "destroy": "cdk destroy --all",
+    "synth": "npm run build && cdk synth",
+    "lint": "eslint . --ext .ts && cd lambda && npm run lint && cd ..",
+    "format": "prettier --write . && cd lambda && npm run format && cd ..",
+    "bootstrap": "cdk bootstrap",
+    "diff": "cdk diff"
+  },
+  "keywords": [
+    "aws",
+    "cdk",
+    "devops",
+    "ci-cd",
+    "infrastructure-as-code",
+    "serverless"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.15.0",
+    "@typescript-eslint/eslint-plugin": "^5.57.0",
+    "@typescript-eslint/parser": "^5.57.0",
+    "eslint": "^8.37.0",
+    "jest": "^29.5.0",
+    "prettier": "^2.8.7",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.2"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.120.0",
+    "constructs": "^10.3.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.ts",
+      "**/?(*.)+(spec|test).ts"
+    ]
+  }
+}
