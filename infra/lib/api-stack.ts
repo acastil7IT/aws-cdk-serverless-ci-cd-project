@@ -101,7 +101,7 @@ export class ApiStack extends cdk.Stack {
         : lambda.Tracing.DISABLED,
       
       // Security
-      reservedConcurrentExecutions: props.stageName === 'prod' ? 100 : 10, // Prevent runaway costs
+      // reservedConcurrentExecutions: props.stageName === 'prod' ? 100 : 10, // Prevent runaway costs - REMOVED due to account limits
       
       description: `API Lambda function for ${props.stageName} environment - DevOps Portfolio Project`,
     });

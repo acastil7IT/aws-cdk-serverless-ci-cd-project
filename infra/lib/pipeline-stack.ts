@@ -42,7 +42,7 @@ export class PipelineStack extends cdk.Stack {
 
     // S3 bucket for pipeline artifacts
     const artifactsBucket = new s3.Bucket(this, 'PipelineArtifacts', {
-      bucketName: `devops-portfolio-pipeline-artifacts-${this.account}`,
+      bucketName: `devops-portfolio-pipeline-artifacts-v2-${this.account}`,
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
@@ -132,7 +132,7 @@ export class PipelineStack extends cdk.Stack {
       }),
       
       // Caching for faster builds
-      cache: codebuild.Cache.local(codebuild.LocalCacheMode.SOURCE),
+      // cache: codebuild.Cache.local(codebuild.LocalCacheMode.SOURCE),
       
       // Timeout
       timeout: cdk.Duration.minutes(15),
@@ -145,23 +145,94 @@ export class PipelineStack extends cdk.Stack {
       }),
     });
 
-    // Grant necessary permissions to CodeBuild
-    buildProject.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'sts:AssumeRole',
-          'cloudformation:*',
-          'iam:*',
-          'lambda:*',
-          'apigateway:*',
-          's3:*',
-          'cloudfront:*',
-          'logs:*',
-        ],
-        resources: ['*'], // In production, be more specific
-      })
-    );
+    // Create deploy projects
+    const deployDevProject = new codebuild.Project(this, 'DeployDevProject', {
+      projectName: 'devops-portfolio-deploy-dev',
+      description: 'Deploy Dev environment using CDK',
+      environment: {
+        buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
+        computeType: codebuild.ComputeType.SMALL,
+      },
+      buildSpec: codebuild.BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          install: {
+            'runtime-versions': {
+              nodejs: '18',
+            },
+            commands: [
+              'npm install -g aws-cdk@latest',
+              'npm ci',
+              'cd lambda && npm ci && cd ..',
+            ],
+          },
+          build: {
+            commands: [
+              'echo "Deploying Dev environment..."',
+              'npm run build',
+              'cdk deploy DevOpsPortfolio-Dev-ApiStack DevOpsPortfolio-Dev-FrontendStack --require-approval never --outputs-file dev-outputs.json',
+            ],
+          },
+        },
+        artifacts: {
+          files: ['dev-outputs.json'],
+        },
+      }),
+    });
+
+    const deployProdProject = new codebuild.Project(this, 'DeployProdProject', {
+      projectName: 'devops-portfolio-deploy-prod',
+      description: 'Deploy Prod environment using CDK',
+      environment: {
+        buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
+        computeType: codebuild.ComputeType.SMALL,
+      },
+      buildSpec: codebuild.BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          install: {
+            'runtime-versions': {
+              nodejs: '18',
+            },
+            commands: [
+              'npm install -g aws-cdk@latest',
+              'npm ci',
+              'cd lambda && npm ci && cd ..',
+            ],
+          },
+          build: {
+            commands: [
+              'echo "Deploying Prod environment..."',
+              'npm run build',
+              'cdk deploy DevOpsPortfolio-Prod-ApiStack DevOpsPortfolio-Prod-FrontendStack --require-approval never --outputs-file prod-outputs.json',
+            ],
+          },
+        },
+        artifacts: {
+          files: ['prod-outputs.json'],
+        },
+      }),
+    });
+
+    // Grant necessary permissions to deploy projects
+    [deployDevProject, deployProdProject].forEach(project => {
+      project.addToRolePolicy(
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'sts:AssumeRole',
+            'cloudformation:*',
+            'iam:*',
+            'lambda:*',
+            'apigateway:*',
+            's3:*',
+            'cloudfront:*',
+            'logs:*',
+          ],
+          resources: ['*'],
+        })
+      );
+    });
 
     // Create pipeline artifacts
     const sourceOutput = new codepipeline.Artifact('SourceOutput');
@@ -182,7 +253,7 @@ export class PipelineStack extends cdk.Stack {
             new codepipeline_actions.S3SourceAction({
               actionName: 'Source',
               bucket: new s3.Bucket(this, 'SourceBucket', {
-                bucketName: `devops-portfolio-source-${this.account}`,
+                bucketName: `devops-portfolio-source-v2-${this.account}`,
                 versioned: true,
                 removalPolicy: cdk.RemovalPolicy.DESTROY,
                 autoDeleteObjects: true,
@@ -223,15 +294,10 @@ export class PipelineStack extends cdk.Stack {
         {
           stageName: 'DeployDev',
           actions: [
-            new codepipeline_actions.CloudFormationCreateUpdateStackAction({
-              actionName: 'Deploy_Dev_Stage',
-              templatePath: buildOutput.atPath('DevStage.template.json'),
-              stackName: 'DevOpsPortfolio-Dev',
-              adminPermissions: true, // In production, use specific roles
-              parameterOverrides: {
-                // Pass any parameters needed for the dev environment
-              },
-              extraInputs: [buildOutput],
+            new codepipeline_actions.CodeBuildAction({
+              actionName: 'Deploy_Dev_Environment',
+              project: deployDevProject,
+              input: sourceOutput, // Use source code, not build artifacts
             }),
           ],
         },
@@ -253,15 +319,10 @@ export class PipelineStack extends cdk.Stack {
         {
           stageName: 'DeployProd',
           actions: [
-            new codepipeline_actions.CloudFormationCreateUpdateStackAction({
-              actionName: 'Deploy_Prod_Stage',
-              templatePath: buildOutput.atPath('ProdStage.template.json'),
-              stackName: 'DevOpsPortfolio-Prod',
-              adminPermissions: true, // In production, use specific roles
-              parameterOverrides: {
-                // Pass any parameters needed for the prod environment
-              },
-              extraInputs: [buildOutput],
+            new codepipeline_actions.CodeBuildAction({
+              actionName: 'Deploy_Prod_Environment',
+              project: deployProdProject,
+              input: sourceOutput, // Use source code, not build artifacts
             }),
           ],
         },

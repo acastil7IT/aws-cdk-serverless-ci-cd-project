@@ -2,6 +2,8 @@
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { PipelineStack } from '../lib/pipeline-stack';
+import { ApiStack } from '../lib/api-stack';
+import { FrontendStack } from '../lib/frontend-stack';
 
 /**
  * CDK App Entry Point
@@ -32,6 +34,48 @@ new PipelineStack(app, 'DevOpsPortfolioPipelineStack', {
     Owner: 'DevOps-Team',
     CostCenter: 'Engineering',
   },
+});
+
+// Create Dev environment stacks
+const devApiStack = new ApiStack(app, 'DevOpsPortfolio-Dev-ApiStack', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
+  },
+  stageName: 'dev',
+  enableDetailedMonitoring: false,
+  description: 'API infrastructure for Dev environment',
+});
+
+new FrontendStack(app, 'DevOpsPortfolio-Dev-FrontendStack', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
+  },
+  stageName: 'dev',
+  apiUrl: devApiStack.apiUrl,
+  description: 'Frontend infrastructure for Dev environment',
+});
+
+// Create Prod environment stacks
+const prodApiStack = new ApiStack(app, 'DevOpsPortfolio-Prod-ApiStack', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
+  },
+  stageName: 'prod',
+  enableDetailedMonitoring: true,
+  description: 'API infrastructure for Prod environment',
+});
+
+new FrontendStack(app, 'DevOpsPortfolio-Prod-FrontendStack', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
+  },
+  stageName: 'prod',
+  apiUrl: prodApiStack.apiUrl,
+  description: 'Frontend infrastructure for Prod environment',
 });
 
 // Add global tags to all resources

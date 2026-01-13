@@ -165,13 +165,9 @@ export class FrontendStack extends cdk.Stack {
       // Enable IPv6
       enableIpv6: true,
       
-      // Logging configuration (optional, costs extra)
-      enableLogging: props.stageName === 'prod',
-      logBucket: props.stageName === 'prod' ? new s3.Bucket(this, 'LogsBucket', {
-        bucketName: `devops-portfolio-logs-${props.stageName}-${this.account}`,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-        autoDeleteObjects: true,
-      }) : undefined,
+      // Logging configuration (disabled for free tier compatibility)
+      // CloudFront logging requires S3 bucket ACLs which are disabled by default in newer AWS accounts
+      enableLogging: false,
     });
 
     // Deploy frontend assets to S3

@@ -28,14 +28,14 @@ const mockContext: Context = {
 function createMockEvent(
   httpMethod: string,
   path: string,
-  body?: string,
+  body?: string | null,
   pathParameters?: { [name: string]: string } | null
 ): APIGatewayProxyEvent {
   return {
     httpMethod,
     path,
-    body: body || null,
-    pathParameters: pathParameters || null,
+    body: body ?? null,
+    pathParameters: pathParameters ?? null,
     headers: {},
     multiValueHeaders: {},
     queryStringParameters: null,

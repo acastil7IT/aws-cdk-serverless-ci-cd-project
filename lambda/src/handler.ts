@@ -70,7 +70,7 @@ export const handler = async (
     const { httpMethod, path, body } = event;
     
     // Create safe pathParameters object - remove undefined values or set to null
-    const pathParameters = event.pathParameters 
+    const pathParameters: { [name: string]: string } | null = event.pathParameters 
       ? Object.fromEntries(
           Object.entries(event.pathParameters)
             .filter(([_, value]) => value !== undefined)
@@ -376,7 +376,7 @@ function createResponse(
 ): APIGatewayProxyResult {
   return {
     statusCode,
-    headers,
+    headers: headers || {}, // Ensure headers is never undefined
     body: JSON.stringify(body, null, 2),
   };
 }
