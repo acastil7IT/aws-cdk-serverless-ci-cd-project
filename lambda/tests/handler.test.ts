@@ -29,13 +29,13 @@ function createMockEvent(
   httpMethod: string,
   path: string,
   body?: string,
-  pathParameters?: { [name: string]: string }
+  pathParameters?: { [name: string]: string } | null
 ): APIGatewayProxyEvent {
   return {
     httpMethod,
     path,
-    body,
-    pathParameters,
+    body: body || null,
+    pathParameters: pathParameters || null,
     headers: {},
     multiValueHeaders: {},
     queryStringParameters: null,
@@ -68,6 +68,7 @@ function createMockEvent(
         user: null,
         userAgent: 'test-agent',
         userArn: null,
+        clientCert: null,
       },
       authorizer: null,
     },
@@ -153,17 +154,19 @@ describe('Lambda Handler', () => {
       const event = createMockEvent('OPTIONS', '/api/v1/items');
       const result = await handler(event, mockContext);
 
+      const headers = result.headers ?? {};
       expect(result.statusCode).toBe(200);
-      expect(result.headers['Access-Control-Allow-Origin']).toBe('*');
-      expect(result.headers['Access-Control-Allow-Methods']).toContain('GET');
+      expect(headers['Access-Control-Allow-Origin']).toBe('*');
+      expect(headers['Access-Control-Allow-Methods']).toContain('GET');
     });
 
     test('should include CORS headers in all responses', async () => {
       const event = createMockEvent('GET', '/health');
       const result = await handler(event, mockContext);
 
-      expect(result.headers['Access-Control-Allow-Origin']).toBe('*');
-      expect(result.headers['Content-Type']).toBe('application/json');
+      const headers = result.headers ?? {};
+      expect(headers['Access-Control-Allow-Origin']).toBe('*');
+      expect(headers['Content-Type']).toBe('application/json');
     });
   });
 

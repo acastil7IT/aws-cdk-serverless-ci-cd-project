@@ -89,7 +89,7 @@ export class FrontendStack extends cdk.Stack {
       
       // Default behavior for S3 origin
       defaultBehavior: {
-        origin: new origins.S3Origin(this.websiteBucket, {
+        origin: origins.S3BucketOrigin.withOriginAccessIdentity(this.websiteBucket, {
           originAccessIdentity,
         }),
         
@@ -155,7 +155,7 @@ export class FrontendStack extends cdk.Stack {
       ],
       
       // Geographic restrictions (optional)
-      geoRestriction: cloudfront.GeoRestriction.denylist(), // No restrictions for demo
+      // geoRestriction: cloudfront.GeoRestriction.allowlist(['US', 'CA']), // Example: Allow only US and Canada
       
       // Price class for cost optimization
       priceClass: props.stageName === 'prod' 

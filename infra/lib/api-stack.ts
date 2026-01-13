@@ -78,7 +78,7 @@ export class ApiStack extends cdk.Stack {
     this.lambdaFunction = new lambda.Function(this, 'ApiFunction', {
       functionName: `devops-portfolio-api-${props.stageName}`,
       runtime: lambda.Runtime.NODEJS_18_X,
-      architecture: lambda.Architecture.ARM_GRAVITON2, // Cost optimization: ARM64 is cheaper
+      architecture: lambda.Architecture.ARM_64, // Cost optimization: ARM64 is cheaper
       handler: 'handler.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda')),
       role: lambdaRole,
@@ -127,10 +127,6 @@ export class ApiStack extends cdk.Stack {
       // API Gateway configuration
       deployOptions: {
         stageName: props.stageName,
-        throttle: {
-          rateLimit: props.stageName === 'prod' ? 1000 : 100, // Requests per second
-          burstLimit: props.stageName === 'prod' ? 2000 : 200, // Burst capacity
-        },
         // Enable access logging
         accessLogDestination: new apigateway.LogGroupLogDestination(
           new logs.LogGroup(this, 'ApiAccessLogGroup', {

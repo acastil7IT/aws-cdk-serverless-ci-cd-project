@@ -67,7 +67,16 @@ export const handler = async (
 
   try {
     // Extract request information
-    const { httpMethod, path, pathParameters, body } = event;
+    const { httpMethod, path, body } = event;
+    
+    // Create safe pathParameters object - remove undefined values or set to null
+    const pathParameters = event.pathParameters 
+      ? Object.fromEntries(
+          Object.entries(event.pathParameters)
+            .filter(([_, value]) => value !== undefined)
+            .map(([key, value]) => [key, value as string])
+        )
+      : null;
     const stage = process.env.STAGE || 'dev';
     
     console.log(`Processing ${httpMethod} request to ${path} in ${stage} environment`);

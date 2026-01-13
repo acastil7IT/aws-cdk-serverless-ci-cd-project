@@ -268,27 +268,6 @@ export class PipelineStack extends cdk.Stack {
       ],
     });
 
-    // Create Dev and Prod stages for CDK Pipelines (alternative approach)
-    // This demonstrates how you might structure this with CDK Pipelines instead
-    
-    const devStage = new ApplicationStage(this, 'DevStage', {
-      env: {
-        account: this.account,
-        region: this.region,
-      },
-      stageName: 'dev',
-      enableDetailedMonitoring: false,
-    });
-
-    const prodStage = new ApplicationStage(this, 'ProdStage', {
-      env: {
-        account: this.account,
-        region: this.region,
-      },
-      stageName: 'prod',
-      enableDetailedMonitoring: true,
-    });
-
     // CloudFormation outputs
     new cdk.CfnOutput(this, 'PipelineName', {
       value: pipeline.pipelineName,

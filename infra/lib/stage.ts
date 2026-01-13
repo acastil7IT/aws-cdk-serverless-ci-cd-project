@@ -14,7 +14,7 @@ import { FrontendStack } from './frontend-stack';
  * to multiple environments with different configurations.
  */
 
-export interface StageProps extends cdk.StageProps {
+export interface ApplicationStageProps extends cdk.StageProps {
   /** Environment name (dev, prod, etc.) */
   stageName: string;
   
@@ -27,12 +27,12 @@ export interface StageProps extends cdk.StageProps {
 
 export class ApplicationStage extends cdk.Stage {
   /** API Gateway URL for this stage */
-  public readonly apiUrl: cdk.CfnOutput;
+  public readonly apiUrl: string;
   
   /** CloudFront distribution URL for this stage */
-  public readonly frontendUrl: cdk.CfnOutput;
+  public readonly frontendUrl: string;
 
-  constructor(scope: Construct, id: string, props: StageProps) {
+  constructor(scope: Construct, id: string, props: ApplicationStageProps) {
     super(scope, id, props);
 
     // Create the API stack (Lambda + API Gateway)
@@ -50,18 +50,9 @@ export class ApplicationStage extends cdk.Stage {
       description: `Frontend infrastructure for ${props.stageName} environment`,
     });
 
-    // Export important URLs for pipeline visibility
-    this.apiUrl = new cdk.CfnOutput(this, 'ApiUrl', {
-      value: apiStack.apiUrl,
-      description: `API Gateway URL for ${props.stageName} environment`,
-      exportName: `${props.stageName}-api-url`,
-    });
-
-    this.frontendUrl = new cdk.CfnOutput(this, 'FrontendUrl', {
-      value: frontendStack.distributionUrl,
-      description: `CloudFront distribution URL for ${props.stageName} environment`,
-      exportName: `${props.stageName}-frontend-url`,
-    });
+    // Store URLs for external reference
+    this.apiUrl = apiStack.apiUrl;
+    this.frontendUrl = frontendStack.distributionUrl;
 
     // Add stage-specific tags
     cdk.Tags.of(this).add('Environment', props.stageName);
