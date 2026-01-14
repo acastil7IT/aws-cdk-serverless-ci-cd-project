@@ -47,7 +47,7 @@ class DevOpsPortfolioApp {
       console.warn('Could not load config.json, using fallback configuration');
       // Fallback configuration for local development
       this.config = {
-        apiUrl: 'https://api.example.com', // This will be replaced by CDK deployment
+        apiUrl: 'https://5g11lq38pa.execute-api.us-east-2.amazonaws.com/dev',
         environment: 'local',
         version: '1.0.0'
       };
