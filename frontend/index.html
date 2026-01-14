@@ -3,59 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevOps Portfolio Project</title>
+    <title>System Monitoring Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+                <span>System Monitor</span>
+            </div>
+            <div class="nav-info">
+                <span class="env-badge" id="env-badge">Loading...</span>
+            </div>
+        </div>
+    </nav>
+
     <div class="container">
-        <header class="header">
-            <h1>🚀 DevOps Portfolio Project</h1>
-            <p class="subtitle">Demonstrating AWS CDK, CI/CD, and Serverless Architecture</p>
-        </header>
+        <!-- System Status Overview -->
+        <div class="dashboard-header">
+            <h1>System Status Dashboard</h1>
+            <p class="dashboard-subtitle">Real-time monitoring and health checks</p>
+        </div>
 
-        <main class="main">
-            <!-- Environment Info -->
-            <section class="card">
-                <h2>Environment Information</h2>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="label">Environment:</span>
-                        <span id="environment" class="value">Loading...</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="label">API URL:</span>
-                        <span id="api-url" class="value">Loading...</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="label">Version:</span>
-                        <span id="version" class="value">Loading...</span>
-                    </div>
+        <!-- Status Cards Grid -->
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-card-header">
+                    <span class="status-label">API Status</span>
+                    <span class="status-indicator" id="api-status">
+                        <span class="pulse"></span>
+                    </span>
                 </div>
-            </section>
+                <div class="status-value" id="api-status-text">Checking...</div>
+                <div class="status-meta" id="api-uptime">Uptime: --</div>
+            </div>
 
-            <!-- API Health Check -->
-            <section class="card">
-                <h2>API Health Status</h2>
-                <button id="health-check-btn" class="btn btn-primary">Check API Health</button>
-                <div id="health-status" class="status-display"></div>
-            </section>
-
-            <!-- Items Management -->
-            <section class="card">
-                <h2>Items Management</h2>
-                <div class="items-controls">
-                    <button id="load-items-btn" class="btn btn-secondary">Load Items</button>
-                    <button id="add-item-btn" class="btn btn-primary">Add New Item</button>
+            <div class="status-card">
+                <div class="status-card-header">
+                    <span class="status-label">Environment</span>
                 </div>
-                <div id="items-list" class="items-container"></div>
-            </section>
-        </main>
+                <div class="status-value" id="environment">--</div>
+                <div class="status-meta">Current deployment</div>
+            </div>
 
-        <footer class="footer">
-            <p>Built with AWS CDK v2 • Deployed via CI/CD Pipeline • Hosted on CloudFront + S3</p>
-        </footer>
+            <div class="status-card">
+                <div class="status-card-header">
+                    <span class="status-label">Version</span>
+                </div>
+                <div class="status-value" id="version">--</div>
+                <div class="status-meta">Application version</div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-card-header">
+                    <span class="status-label">Response Time</span>
+                </div>
+                <div class="status-value" id="response-time">-- ms</div>
+                <div class="status-meta">Average latency</div>
+            </div>
+        </div>
+
+        <!-- Health Check Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Health Check</h2>
+                <button id="health-check-btn" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                    Run Health Check
+                </button>
+            </div>
+            <div id="health-status" class="result-panel"></div>
+        </div>
+
+        <!-- Data Management Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Data Management</h2>
+                <div class="section-actions">
+                    <button id="load-items-btn" class="btn btn-secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Refresh Data
+                    </button>
+                    <button id="add-item-btn" class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Add New Entry
+                    </button>
+                </div>
+            </div>
+            <div id="items-list" class="data-grid"></div>
+        </div>
+
+        <!-- System Information -->
+        <div class="section">
+            <div class="section-header">
+                <h2>System Information</h2>
+            </div>
+            <div class="info-table">
+                <div class="info-row">
+                    <span class="info-label">API Endpoint</span>
+                    <span class="info-value" id="api-url">Loading...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Region</span>
+                    <span class="info-value">us-east-2</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Architecture</span>
+                    <span class="info-value">Serverless (Lambda + API Gateway)</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">CDN</span>
+                    <span class="info-value">CloudFront Global Distribution</span>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <span>Powered by AWS Cloud Infrastructure</span>
+            <span class="footer-divider">•</span>
+            <span>Deployed via CI/CD Pipeline</span>
+        </div>
+    </footer>
 
     <script src="script.js"></script>
 </body>

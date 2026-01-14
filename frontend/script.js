@@ -73,15 +73,25 @@ class DevOpsPortfolioApp {
     const environmentEl = document.getElementById('environment');
     const apiUrlEl = document.getElementById('api-url');
     const versionEl = document.getElementById('version');
+    const envBadge = document.getElementById('env-badge');
 
-    if (environmentEl) environmentEl.textContent = this.config.environment || 'Unknown';
+    const env = this.config.environment || 'Unknown';
+    
+    if (environmentEl) environmentEl.textContent = env.toUpperCase();
     if (apiUrlEl) apiUrlEl.textContent = this.apiUrl || 'Not configured';
     if (versionEl) versionEl.textContent = this.config.version || '1.0.0';
+    if (envBadge) {
+      envBadge.textContent = env.toUpperCase();
+      envBadge.style.background = env === 'prod' ? '#dc2626' : '#3b82f6';
+    }
   }
 
   async checkApiHealth() {
     const button = document.getElementById('health-check-btn');
     const statusDisplay = document.getElementById('health-status');
+    const apiStatusText = document.getElementById('api-status-text');
+    const apiUptime = document.getElementById('api-uptime');
+    const responseTimeEl = document.getElementById('response-time');
     
     if (!button || !statusDisplay) return;
 
@@ -89,35 +99,52 @@ class DevOpsPortfolioApp {
       // Show loading state
       button.disabled = true;
       button.innerHTML = '<span class="spinner"></span>Checking...';
-      statusDisplay.className = 'status-display show';
-      statusDisplay.innerHTML = 'Checking API health...';
+      statusDisplay.className = 'result-panel show';
+      statusDisplay.innerHTML = 'Running health check...';
 
+      const startTime = performance.now();
       const response = await fetch(`${this.apiUrl}/health`);
+      const endTime = performance.now();
+      const responseTime = Math.round(endTime - startTime);
+      
       const data = await response.json();
 
       if (response.ok && data.success) {
-        statusDisplay.className = 'status-display show status-success';
+        statusDisplay.className = 'result-panel show success';
         statusDisplay.innerHTML = `
-          <h3>✅ API Health Check Passed</h3>
+          <h3>System Health: Operational</h3>
           <p><strong>Status:</strong> ${data.data.status}</p>
           <p><strong>Environment:</strong> ${data.data.environment}</p>
           <p><strong>Timestamp:</strong> ${new Date(data.data.timestamp).toLocaleString()}</p>
           <p><strong>Uptime:</strong> ${Math.round(data.data.uptime)} seconds</p>
+          <p><strong>Response Time:</strong> ${responseTime} ms</p>
         `;
+        
+        if (apiStatusText) apiStatusText.textContent = 'Healthy';
+        if (apiUptime) apiUptime.textContent = `Uptime: ${Math.round(data.data.uptime)}s`;
+        if (responseTimeEl) responseTimeEl.textContent = `${responseTime} ms`;
       } else {
         throw new Error(data.message || 'Health check failed');
       }
     } catch (error) {
       console.error('Health check failed:', error);
-      statusDisplay.className = 'status-display show status-error';
+      statusDisplay.className = 'result-panel show error';
       statusDisplay.innerHTML = `
-        <h3>❌ API Health Check Failed</h3>
+        <h3>System Health: Error</h3>
         <p><strong>Error:</strong> ${error.message}</p>
-        <p>Please check the API configuration and try again.</p>
+        <p>Unable to connect to the API. Please check the configuration and try again.</p>
       `;
+      
+      if (apiStatusText) apiStatusText.textContent = 'Error';
     } finally {
       button.disabled = false;
-      button.innerHTML = 'Check API Health';
+      button.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+        Run Health Check
+      `;
     }
   }
   async loadItems() {
@@ -141,13 +168,18 @@ class DevOpsPortfolioApp {
     } catch (error) {
       console.error('Failed to load items:', error);
       container.innerHTML = `
-        <div class="status-display show status-error">
-          <p>Failed to load items: ${error.message}</p>
+        <div class="result-panel show error">
+          <p>Failed to load data: ${error.message}</p>
         </div>
       `;
     } finally {
       button.disabled = false;
-      button.innerHTML = 'Load Items';
+      button.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Refresh Data
+      `;
     }
   }
 
@@ -157,25 +189,25 @@ class DevOpsPortfolioApp {
 
     if (!items || items.length === 0) {
       container.innerHTML = `
-        <div class="status-display show">
-          <p>No items found. Add some items to get started!</p>
+        <div class="result-panel show">
+          <p>No data entries found. Add new entries to get started.</p>
         </div>
       `;
       return;
     }
 
     container.innerHTML = items.map(item => `
-      <div class="item-card fade-in">
-        <div class="item-header">
-          <h3 class="item-title">${this.escapeHtml(item.name)}</h3>
-          <span class="item-id">ID: ${item.id}</span>
+      <div class="data-card">
+        <div class="data-card-header">
+          <h3 class="data-title">${this.escapeHtml(item.name)}</h3>
+          <span class="data-id">ID: ${item.id}</span>
         </div>
-        <p class="item-description">${this.escapeHtml(item.description)}</p>
-        <div class="item-meta">
+        <p class="data-description">${this.escapeHtml(item.description)}</p>
+        <div class="data-meta">
           <span>Created: ${new Date(item.createdAt).toLocaleDateString()}</span>
           <span>Updated: ${new Date(item.updatedAt).toLocaleDateString()}</span>
         </div>
-        <div class="item-actions">
+        <div class="data-actions">
           <button class="btn btn-secondary btn-small" onclick="app.editItem('${item.id}')">
             Edit
           </button>
