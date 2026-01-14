@@ -80,7 +80,7 @@ export class ApiStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_18_X,
       architecture: lambda.Architecture.ARM_64, // Cost optimization: ARM64 is cheaper
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda/dist')),
       role: lambdaRole,
       
       // Performance and cost optimization
