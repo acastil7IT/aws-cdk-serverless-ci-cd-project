@@ -93,7 +93,7 @@ export class PipelineStack extends cdk.Stack {
               'npm run test || echo "Tests failed, continuing..."',
               
               // Install Lambda dependencies
-              'cd lambda && npm ci && cd ..',
+              'cd lambda && npm install && cd ..',
               
               // Validate CDK code
               'npm run build',
@@ -163,7 +163,7 @@ export class PipelineStack extends cdk.Stack {
             commands: [
               'npm install -g aws-cdk@latest',
               'npm ci',
-              'cd lambda && npm ci && cd ..',
+              'cd lambda && npm install && cd ..',
             ],
           },
           build: {
@@ -197,7 +197,7 @@ export class PipelineStack extends cdk.Stack {
             commands: [
               'npm install -g aws-cdk@latest',
               'npm ci',
-              'cd lambda && npm ci && cd ..',
+              'cd lambda && npm install && cd ..',
             ],
           },
           build: {
