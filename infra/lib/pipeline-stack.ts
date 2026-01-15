@@ -5,7 +5,6 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import { ApplicationStage } from './stage';
 
 /**
  * CI/CD Pipeline Stack using AWS CodePipeline
@@ -89,8 +88,8 @@ export class PipelineStack extends cdk.Stack {
           pre_build: {
             commands: [
               'echo "Running pre-build checks..."',
-              'npm run lint || echo "Linting failed, continuing..."',
-              'npm run test || echo "Tests failed, continuing..."',
+              'npm run lint',
+              'npm run test',
               
               // Install Lambda dependencies
               'cd lambda && npm install && cd ..',

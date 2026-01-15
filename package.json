@@ -1,7 +1,7 @@
 {
-  "name": "devops-portfolio-project",
+  "name": "cloudops-platform",
   "version": "1.0.0",
-  "description": "Resume-ready DevOps project demonstrating AWS CDK CI/CD best practices",
+  "description": "Production-grade cloud operations platform with automated CI/CD, serverless architecture, and real-time monitoring",
   "main": "infra/bin/app.js",
   "scripts": {
     "build": "tsc && cd lambda && npm run build && cd ..",
