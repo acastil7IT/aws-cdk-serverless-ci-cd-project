@@ -3,6 +3,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -35,9 +36,39 @@ export class ApiStack extends cdk.Stack {
   
   /** Lambda function for external reference */
   public readonly lambdaFunction: lambda.Function;
+  
+  /** DynamoDB table for data storage */
+  public readonly dataTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
+
+    // Create DynamoDB table for storing application data
+    this.dataTable = new dynamodb.Table(this, 'DataTable', {
+      tableName: `cloudops-data-${props.stageName}`,
+      partitionKey: {
+        name: 'id',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST, // Cost-effective for variable workloads
+      encryption: dynamodb.TableEncryption.AWS_MANAGED,
+      pointInTimeRecovery: props.stageName === 'prod', // Enable for production
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // Safe for demo, change for production
+      timeToLiveAttribute: 'ttl', // Optional: auto-delete old records
+    });
+
+    // Add GSI for querying by timestamp
+    this.dataTable.addGlobalSecondaryIndex({
+      indexName: 'timestamp-index',
+      partitionKey: {
+        name: 'type',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'createdAt',
+        type: dynamodb.AttributeType.NUMBER,
+      },
+    });
 
     // Create CloudWatch log group for Lambda function
     // Explicit log group creation allows us to set retention and control costs
@@ -92,6 +123,8 @@ export class ApiStack extends cdk.Stack {
         STAGE: props.stageName,
         LOG_LEVEL: props.stageName === 'prod' ? 'INFO' : 'DEBUG',
         NODE_ENV: props.stageName === 'prod' ? 'production' : 'development',
+        TABLE_NAME: this.dataTable.tableName,
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1', // Performance optimization
       },
       
       // Monitoring configuration
@@ -105,6 +138,9 @@ export class ApiStack extends cdk.Stack {
       
       description: `API Lambda function for ${props.stageName} environment - DevOps Portfolio Project`,
     });
+
+    // Grant Lambda permissions to access DynamoDB table
+    this.dataTable.grantReadWriteData(this.lambdaFunction);
 
     // Create API Gateway REST API
     const api = new apigateway.RestApi(this, 'ApiGateway', {
@@ -209,6 +245,12 @@ export class ApiStack extends cdk.Stack {
       value: this.lambdaFunction.functionArn,
       description: 'Lambda function ARN',
       exportName: `${props.stageName}-lambda-function-arn`,
+    });
+
+    new cdk.CfnOutput(this, 'DynamoDBTableName', {
+      value: this.dataTable.tableName,
+      description: 'DynamoDB table name',
+      exportName: `${props.stageName}-dynamodb-table-name`,
     });
   }
 }

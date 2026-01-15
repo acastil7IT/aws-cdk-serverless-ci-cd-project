@@ -1,382 +1,347 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { randomUUID } from 'crypto';
 
-/**
- * DevOps Portfolio API Lambda Handler
- * 
- * This Lambda function demonstrates enterprise-grade API development patterns:
- * - Proper error handling and logging
- * - CORS support for frontend integration
- * - Health check endpoints for monitoring
- * - RESTful API design
- * - Environment-aware configuration
- * 
- * Routes:
- * - GET /health - Health check endpoint
- * - GET /api/v1/items - List items
- * - POST /api/v1/items - Create item
- * - GET /api/v1/items/{id} - Get specific item
- * - PUT /api/v1/items/{id} - Update item
- * - DELETE /api/v1/items/{id} - Delete item
- */
+// Initialize DynamoDB client
+const client = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(client);
 
-// Types for our API
+const TABLE_NAME = process.env.TABLE_NAME || '';
+const STAGE = process.env.STAGE || 'dev';
+
 interface Item {
   id: string;
+  type: string;
   name: string;
   description: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: number;
+  updatedAt: number;
 }
-
-interface ApiResponse {
-  success: boolean;
-  data?: any;
-  error?: string;
-  message?: string;
-}
-
-// In-memory storage for demo purposes
-// In production, this would be DynamoDB, RDS, or another persistent store
-let items: Item[] = [
-  {
-    id: '1',
-    name: 'Sample Item 1',
-    description: 'This is a sample item to demonstrate the API',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: '2',
-    name: 'Sample Item 2',
-    description: 'Another sample item showing CRUD operations',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-];
 
 /**
- * Main Lambda handler function
+ * Main Lambda handler
+ * Routes requests to appropriate handlers based on HTTP method and path
  */
 export const handler = async (
   event: APIGatewayProxyEvent,
   context: Context
 ): Promise<APIGatewayProxyResult> => {
-  // Log the incoming request for debugging
   console.log('Event:', JSON.stringify(event, null, 2));
   console.log('Context:', JSON.stringify(context, null, 2));
 
+  const path = event.path;
+  const method = event.httpMethod;
+
   try {
-    // Extract request information
-    const { httpMethod, path, body } = event;
-    
-    // Create safe pathParameters object - remove undefined values or set to null
-    const pathParameters: { [name: string]: string } | null = event.pathParameters 
-      ? Object.fromEntries(
-          Object.entries(event.pathParameters)
-            .filter(([_, value]) => value !== undefined)
-            .map(([key, value]) => [key, value as string])
-        )
-      : null;
-    const stage = process.env.STAGE || 'dev';
-    
-    console.log(`Processing ${httpMethod} request to ${path} in ${stage} environment`);
-
-    // CORS headers for all responses
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*', // In production, specify exact origins
-      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-      'Content-Type': 'application/json',
-    };
-
-    // Handle preflight OPTIONS requests
-    if (httpMethod === 'OPTIONS') {
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify({ message: 'CORS preflight successful' }),
-      };
+    // Health check endpoint
+    if (path === '/health' && method === 'GET') {
+      return handleHealthCheck();
     }
 
-    // Route the request
-    let response: ApiResponse;
-
-    if (path === '/health') {
-      response = await handleHealthCheck();
-    } else if (path.startsWith('/api/v1/items')) {
-      response = await handleItemsApi(httpMethod, path, pathParameters, body);
-    } else {
-      response = {
-        success: false,
-        error: 'Not Found',
-        message: `Path ${path} not found`,
-      };
-      return createResponse(404, response, corsHeaders);
+    // Items endpoints
+    if (path === '/api/v1/items' && method === 'GET') {
+      return await handleGetItems();
     }
 
-    // Return successful response
-    return createResponse(200, response, corsHeaders);
+    if (path === '/api/v1/items' && method === 'POST') {
+      return await handleCreateItem(event);
+    }
 
-  } catch (error) {
-    console.error('Error processing request:', error);
-    
-    const errorResponse: ApiResponse = {
+    if (path.startsWith('/api/v1/items/') && method === 'GET') {
+      const id = path.split('/').pop();
+      return await handleGetItem(id!);
+    }
+
+    if (path.startsWith('/api/v1/items/') && method === 'PUT') {
+      const id = path.split('/').pop();
+      return await handleUpdateItem(id!, event);
+    }
+
+    if (path.startsWith('/api/v1/items/') && method === 'DELETE') {
+      const id = path.split('/').pop();
+      return await handleDeleteItem(id!);
+    }
+
+    // Route not found
+    return createResponse(404, {
       success: false,
-      error: 'Internal Server Error',
-      message: 'An unexpected error occurred',
-    };
-
-    return createResponse(500, errorResponse, {
-      'Access-Control-Allow-Origin': '*',
-      'Content-Type': 'application/json',
+      message: 'Route not found',
+      path,
+      method,
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    return createResponse(500, {
+      success: false,
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };
 
 /**
- * Health check endpoint - critical for load balancers and monitoring
+ * Health check endpoint
+ * Returns system status and metadata
  */
-async function handleHealthCheck(): Promise<ApiResponse> {
-  const stage = process.env.STAGE || 'dev';
-  const timestamp = new Date().toISOString();
-  
-  return {
+function handleHealthCheck(): APIGatewayProxyResult {
+  const uptime = process.uptime();
+  const memory = process.memoryUsage();
+
+  return createResponse(200, {
     success: true,
     data: {
       status: 'healthy',
-      environment: stage,
-      timestamp,
-      version: process.env.npm_package_version || '1.0.0',
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
+      environment: STAGE,
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      uptime,
+      memory: {
+        rss: memory.rss,
+        heapTotal: memory.heapTotal,
+        heapUsed: memory.heapUsed,
+        external: memory.external,
+        arrayBuffers: memory.arrayBuffers,
+      },
+      table: TABLE_NAME,
     },
     message: 'Service is healthy and operational',
-  };
+  });
 }
 
 /**
- * Handle CRUD operations for items
+ * Get all items from DynamoDB
  */
-async function handleItemsApi(
-  method: string,
-  path: string,
-  pathParameters: { [name: string]: string } | null,
-  body: string | null
-): Promise<ApiResponse> {
-  
-  switch (method) {
-    case 'GET':
-      if (pathParameters?.id) {
-        return getItem(pathParameters.id);
-      } else {
-        return listItems();
-      }
-    
-    case 'POST':
-      return createItem(body);
-    
-    case 'PUT':
-      if (pathParameters?.id) {
-        return updateItem(pathParameters.id, body);
-      } else {
-        return {
-          success: false,
-          error: 'Bad Request',
-          message: 'Item ID is required for PUT requests',
-        };
-      }
-    
-    case 'DELETE':
-      if (pathParameters?.id) {
-        return deleteItem(pathParameters.id);
-      } else {
-        return {
-          success: false,
-          error: 'Bad Request',
-          message: 'Item ID is required for DELETE requests',
-        };
-      }
-    
-    default:
-      return {
+async function handleGetItems(): Promise<APIGatewayProxyResult> {
+  try {
+    const command = new ScanCommand({
+      TableName: TABLE_NAME,
+      FilterExpression: '#type = :type',
+      ExpressionAttributeNames: {
+        '#type': 'type',
+      },
+      ExpressionAttributeValues: {
+        ':type': 'item',
+      },
+    });
+
+    const result = await docClient.send(command);
+    const items = (result.Items || []) as Item[];
+
+    // Sort by creation date (newest first)
+    items.sort((a, b) => b.createdAt - a.createdAt);
+
+    return createResponse(200, {
+      success: true,
+      data: {
+        items,
+        count: items.length,
+      },
+      message: 'Items retrieved successfully',
+    });
+  } catch (error) {
+    console.error('Error getting items:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get a single item by ID
+ */
+async function handleGetItem(id: string): Promise<APIGatewayProxyResult> {
+  try {
+    const command = new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { id },
+    });
+
+    const result = await docClient.send(command);
+
+    if (!result.Item) {
+      return createResponse(404, {
         success: false,
-        error: 'Method Not Allowed',
-        message: `HTTP method ${method} is not supported`,
-      };
-  }
-}
+        message: 'Item not found',
+      });
+    }
 
-/**
- * List all items
- */
-async function listItems(): Promise<ApiResponse> {
-  console.log(`Listing ${items.length} items`);
-  
-  return {
-    success: true,
-    data: {
-      items,
-      count: items.length,
-    },
-    message: 'Items retrieved successfully',
-  };
-}
-
-/**
- * Get a specific item by ID
- */
-async function getItem(id: string): Promise<ApiResponse> {
-  console.log(`Getting item with ID: ${id}`);
-  
-  const item = items.find(item => item.id === id);
-  
-  if (!item) {
-    return {
-      success: false,
-      error: 'Not Found',
-      message: `Item with ID ${id} not found`,
-    };
+    return createResponse(200, {
+      success: true,
+      data: {
+        item: result.Item,
+      },
+      message: 'Item retrieved successfully',
+    });
+  } catch (error) {
+    console.error('Error getting item:', error);
+    throw error;
   }
-  
-  return {
-    success: true,
-    data: { item },
-    message: 'Item retrieved successfully',
-  };
 }
 
 /**
  * Create a new item
  */
-async function createItem(body: string | null): Promise<ApiResponse> {
-  if (!body) {
-    return {
-      success: false,
-      error: 'Bad Request',
-      message: 'Request body is required',
-    };
-  }
-  
+async function handleCreateItem(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    const { name, description } = JSON.parse(body);
+    const body = JSON.parse(event.body || '{}');
     
-    if (!name || !description) {
-      return {
+    if (!body.name || !body.description) {
+      return createResponse(400, {
         success: false,
-        error: 'Bad Request',
-        message: 'Name and description are required',
-      };
+        message: 'Missing required fields: name and description',
+      });
     }
-    
-    const newItem: Item = {
-      id: (items.length + 1).toString(),
-      name,
-      description,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+
+    const now = Date.now();
+    const item: Item = {
+      id: randomUUID(),
+      type: 'item',
+      name: body.name,
+      description: body.description,
+      createdAt: now,
+      updatedAt: now,
     };
-    
-    items.push(newItem);
-    
-    console.log(`Created new item with ID: ${newItem.id}`);
-    
-    return {
+
+    const command = new PutCommand({
+      TableName: TABLE_NAME,
+      Item: item,
+    });
+
+    await docClient.send(command);
+
+    return createResponse(201, {
       success: true,
-      data: { item: newItem },
+      data: {
+        item,
+      },
       message: 'Item created successfully',
-    };
-    
+    });
   } catch (error) {
-    return {
-      success: false,
-      error: 'Bad Request',
-      message: 'Invalid JSON in request body',
-    };
+    console.error('Error creating item:', error);
+    throw error;
   }
 }
 
 /**
  * Update an existing item
  */
-async function updateItem(id: string, body: string | null): Promise<ApiResponse> {
-  if (!body) {
-    return {
-      success: false,
-      error: 'Bad Request',
-      message: 'Request body is required',
-    };
-  }
-  
-  const itemIndex = items.findIndex(item => item.id === id);
-  
-  if (itemIndex === -1) {
-    return {
-      success: false,
-      error: 'Not Found',
-      message: `Item with ID ${id} not found`,
-    };
-  }
-  
+async function handleUpdateItem(id: string, event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
-    const { name, description } = JSON.parse(body);
+    const body = JSON.parse(event.body || '{}');
     
-    if (name) items[itemIndex].name = name;
-    if (description) items[itemIndex].description = description;
-    items[itemIndex].updatedAt = new Date().toISOString();
-    
-    console.log(`Updated item with ID: ${id}`);
-    
-    return {
+    if (!body.name && !body.description) {
+      return createResponse(400, {
+        success: false,
+        message: 'At least one field (name or description) must be provided',
+      });
+    }
+
+    // Check if item exists
+    const getCommand = new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { id },
+    });
+    const existing = await docClient.send(getCommand);
+
+    if (!existing.Item) {
+      return createResponse(404, {
+        success: false,
+        message: 'Item not found',
+      });
+    }
+
+    // Build update expression
+    const updates: string[] = [];
+    const expressionAttributeNames: Record<string, string> = {};
+    const expressionAttributeValues: Record<string, any> = {};
+
+    if (body.name) {
+      updates.push('#name = :name');
+      expressionAttributeNames['#name'] = 'name';
+      expressionAttributeValues[':name'] = body.name;
+    }
+
+    if (body.description) {
+      updates.push('#description = :description');
+      expressionAttributeNames['#description'] = 'description';
+      expressionAttributeValues[':description'] = body.description;
+    }
+
+    updates.push('#updatedAt = :updatedAt');
+    expressionAttributeNames['#updatedAt'] = 'updatedAt';
+    expressionAttributeValues[':updatedAt'] = Date.now();
+
+    const updateCommand = new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { id },
+      UpdateExpression: `SET ${updates.join(', ')}`,
+      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ReturnValues: 'ALL_NEW',
+    });
+
+    const result = await docClient.send(updateCommand);
+
+    return createResponse(200, {
       success: true,
-      data: { item: items[itemIndex] },
+      data: {
+        item: result.Attributes,
+      },
       message: 'Item updated successfully',
-    };
-    
+    });
   } catch (error) {
-    return {
-      success: false,
-      error: 'Bad Request',
-      message: 'Invalid JSON in request body',
-    };
+    console.error('Error updating item:', error);
+    throw error;
   }
 }
 
 /**
  * Delete an item
  */
-async function deleteItem(id: string): Promise<ApiResponse> {
-  const itemIndex = items.findIndex(item => item.id === id);
-  
-  if (itemIndex === -1) {
-    return {
-      success: false,
-      error: 'Not Found',
-      message: `Item with ID ${id} not found`,
-    };
+async function handleDeleteItem(id: string): Promise<APIGatewayProxyResult> {
+  try {
+    // Check if item exists
+    const getCommand = new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { id },
+    });
+    const existing = await docClient.send(getCommand);
+
+    if (!existing.Item) {
+      return createResponse(404, {
+        success: false,
+        message: 'Item not found',
+      });
+    }
+
+    const deleteCommand = new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { id },
+    });
+
+    await docClient.send(deleteCommand);
+
+    return createResponse(200, {
+      success: true,
+      message: 'Item deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting item:', error);
+    throw error;
   }
-  
-  const deletedItem = items.splice(itemIndex, 1)[0];
-  
-  console.log(`Deleted item with ID: ${id}`);
-  
-  return {
-    success: true,
-    data: { item: deletedItem },
-    message: 'Item deleted successfully',
-  };
 }
 
 /**
- * Create a standardized API Gateway response
+ * Create a standardized API response
  */
-function createResponse(
-  statusCode: number,
-  body: ApiResponse,
-  headers: { [header: string]: string }
-): APIGatewayProxyResult {
+function createResponse(statusCode: number, body: any): APIGatewayProxyResult {
   return {
     statusCode,
-    headers: headers || {}, // Ensure headers is never undefined
-    body: JSON.stringify(body, null, 2),
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+    },
+    body: JSON.stringify(body),
   };
 }
