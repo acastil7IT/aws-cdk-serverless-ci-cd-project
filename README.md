@@ -2,6 +2,13 @@
 
 A production-grade cloud operations platform demonstrating enterprise DevOps practices, serverless architecture, and automated CI/CD workflows using AWS CDK v2. Built with Infrastructure as Code principles and designed for scalability, security, and cost efficiency.
 
+## Live Demo
+
+**Development Environment**: https://d2m4s9gmzvqzl4.cloudfront.net  
+**Production Environment**: https://dd5mu6dtzqvkg.cloudfront.net
+
+Both environments demonstrate the complete platform with real-time monitoring, health checks, and DynamoDB integration.
+
 ## Architecture Overview
 
 This platform demonstrates a complete serverless application lifecycle with automated deployment pipelines:
