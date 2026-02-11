@@ -300,9 +300,3 @@ Security is implemented through least-privilege IAM policies, HTTPS enforcement,
 **Development**: TypeScript, Node.js, JavaScript, AWS CDK v2  
 **DevOps**: Git, npm, Jest, ESLint, AWS CLI, bash scripting  
 **Patterns**: Serverless architecture, RESTful APIs, Infrastructure as Code, CI/CD automation
-
----
-
-## License
-
-MIT License - This project is open source and available for educational and commercial use.
